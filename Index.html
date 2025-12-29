@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polygon POL Balance</title>
+    <style>
+        :root { --primary: #8247e5; --bg: #0f0e13; --card: #1c1924; --text: #ffffff; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: var(--card); padding: 2rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 90%; max-width: 400px; border: 1px solid #3b354d; }
+        h2 { margin-bottom: 1.5rem; color: var(--primary); }
+        button { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: transform 0.2s, background 0.2s; width: 100%; font-size: 1rem; }
+        button:hover { background: #6d39c3; transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+        .info-box { margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; display: none; text-align: left; word-break: break-all; }
+        .label { font-size: 0.8rem; color: #b2b0b8; margin-bottom: 4px; }
+        .value { font-family: monospace; font-size: 1rem; margin-bottom: 12px; color: #00ffa3; }
+        #status { margin-top: 10px; font-size: 0.8rem; color: #ff4a4a; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Polygon Wallet</h2>
+        <button id="connectBtn">Connect MetaMask</button>
+        <div id="status"></div>
+
+        <div class="info-box" id="walletInfo">
+            <div class="label">Wallet Address</div>
+            <div class="value" id="addrText">0x...</div>
+            
+            <div class="label">POL Balance</div>
+            <div class="value" id="balText">0.0000</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
+    <script>
+        const connectBtn = document.getElementById('connectBtn');
+        const walletInfo = document.getElementById('walletInfo');
+        const addrText = document.getElementById('addrText');
+        const balText = document.getElementById('balText');
+        const status = document.getElementById('status');
+
+        async function init() {
+            if (typeof window.ethereum === 'undefined') {
+                status.innerText = "MetaMask not detected. Use MetaMask Browser!";
+                return;
+            }
+
+            try {
+                // 1. Setup Provider
+                const provider = new ethers.BrowserProvider(window.ethereum);
+
+                // 2. Connect Button Logic
+                connectBtn.onclick = async () => {
+                    status.innerText = "Connecting...";
+                    
+                    try {
+                        // Request Accounts
+                        const accounts = await provider.send("eth_requestAccounts", []);
+                        const address = accounts[0];
+
+                        // 3. Force Switch to Polygon Mainnet (ChainID 137 / 0x89)
+                        try {
+                            await window.ethereum.request({
+                                method: 'wallet_switchEthereumChain',
+                                params: [{ chainId: '0x89' }], 
+                            });
+                        } catch (switchError) {
+                            if (switchError.code === 4902) {
+                                status.innerText = "Please add Polygon Network to MetaMask.";
+                                return;
+                            }
+                        }
+
+                        // 4. Fetch Balance
+                        const balanceBigInt = await provider.getBalance(address);
+                        const balanceFinal = ethers.formatEther(balanceBigInt);
+
+                        // 5. Update UI
+                        addrText.innerText = address;
+                        balText.innerText = parseFloat(balanceFinal).toFixed(4) + " POL";
+                        walletInfo.style.display = 'block';
+                        connectBtn.innerText = "Wallet Connected";
+                        status.innerText = "";
+
+                    } catch (err) {
+                        console.error(err);
+                        status.innerText = "Connection Failed: " + err.message;
+                    }
+                };
+
+            } catch (e) {
+                status.innerText = "Error initializing: " + e.message;
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
+
